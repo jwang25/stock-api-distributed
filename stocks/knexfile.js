@@ -1,7 +1,7 @@
 module.exports = {
   client: "mysql",
   connection: {
-    host: "database-1.cxycc90lout0.ap-southeast-2.rds.amazonaws.com",
+    host: process.env.SQL_HOST,
     database: "webcomputing",
     user: "webapp",
     password: "password",
