@@ -1,10 +1,10 @@
 module.exports = {
   client: "mysql",
   connection: {
-    host: process.env.SQL_HOST,
+    host: "localhost",
     database: "webcomputing",
     user: "webapp",
     password: "password",
-    //insecureAuth: true,
+    insecureAuth: true,
   },
 };

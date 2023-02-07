@@ -1,7 +1,7 @@
 FROM node
-WORKDIR /app
-COPY package*.json ./
+WORKDIR '/app'
+COPY package.json .
+COPY package-lock.json .
 RUN npm install 
 COPY . .
-EXPOSE 3005
-# CMD ["npm", "start"]
+CMD ["npm", "start"]
