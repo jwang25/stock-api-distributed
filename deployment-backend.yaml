@@ -1,0 +1,200 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - image: mysql:latest
+          name: mysql
+          env:
+            # Use secret in real usage
+            - name: MYSQL_ROOT_PASSWORD
+              value: password
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stocks
+spec:
+  selector:
+    matchLabels:
+      app: stocks
+  template:
+    metadata:
+      labels:
+        app: stocks
+    spec:
+      tolerations:
+      nodeSelector:
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: stocks
+          image: 457777705445.dkr.ecr.ap-southeast-2.amazonaws.com/johnw_repo:stocks
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3002
+          command: ["sh", "-c"]
+          args:
+            [
+              "npm install @opentelemetry/instrumentation-http && npm install @splunk/otel && node -r @splunk/otel/instrument ./bin/www",
+            ]
+          env:
+            - name: SQL_HOST
+              value: "$(MYSQL_SERVICE_HOST)"
+            - name: SPLUNK_OTEL_AGENT
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://$(SPLUNK_OTEL_AGENT):4317"
+            - name: OTEL_SERVICE_NAME
+              value: "stocks"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "deployment.environment=johnw_env"
+            - name: SPLUNK_PROFILER_ENABLED
+              value: "true"
+            - name: SPLUNK_PROFILER_MEMORY_ENABLED
+              value: "true"
+            - name: SPLUNK_METRICS_ENABLED
+              value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stocks
+spec:
+  type: ClusterIP
+  selector:
+    app: stocks
+  ports:
+    - name: grpc
+      port: 3002
+      targetPort: 3002
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stocks-external
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "5"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "3"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "2"
+spec:
+  type: LoadBalancer
+  selector:
+    app: stocks
+  ports:
+    - name: http
+      port: 82
+      targetPort: 3002
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users
+spec:
+  selector:
+    matchLabels:
+      app: users
+  template:
+    metadata:
+      labels:
+        app: users
+    spec:
+      tolerations:
+      nodeSelector:
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: users
+          image: 457777705445.dkr.ecr.ap-southeast-2.amazonaws.com/johnw_repo:users
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3005
+          command: ["sh", "-c"]
+          args:
+            [
+              "npm install @opentelemetry/instrumentation-http && npm install @splunk/otel && node -r @splunk/otel/instrument ./bin/www",
+            ]
+          env:
+            - name: SQL_HOST
+              value: "$(MYSQL_SERVICE_HOST)"
+            - name: SPLUNK_OTEL_AGENT
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://$(SPLUNK_OTEL_AGENT):4317"
+            - name: OTEL_SERVICE_NAME
+              value: "users"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "deployment.environment=johnw_env"
+            - name: SPLUNK_PROFILER_ENABLED
+              value: "true"
+            - name: SPLUNK_PROFILER_MEMORY_ENABLED
+              value: "true"
+            - name: SPLUNK_METRICS_ENABLED
+              value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: users
+spec:
+  type: ClusterIP
+  selector:
+    app: users
+  ports:
+    - name: grpc
+      port: 3005
+      targetPort: 3005
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: users-external
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "5"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "3"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "2"
+spec:
+  type: LoadBalancer
+  selector:
+    app: users
+  ports:
+    - name: http
+      port: 85
+      targetPort: 3005
