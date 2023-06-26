@@ -7,7 +7,7 @@ const logger = require("morgan");
 const helmet = require("helmet");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
-
+const {start} = require('@splunk/otel');
 
 const homeRouter = require("./routes/home");
 
@@ -19,6 +19,12 @@ const homeRouter = require("./routes/home");
 //   key: privateKey,
 //   cert: certificate
 // };
+start({
+   serviceName: 'johnw_service',
+   endpoint: 'http://localhost:4317',
+   metrics: { runtimeMetricsEnabled: true },
+   profiling: { memoryProfilingEnabled: true }
+});
 var app = express();
 yaml = require("yamljs");
 swaggerDocument = yaml.load("./swagger.yaml");
