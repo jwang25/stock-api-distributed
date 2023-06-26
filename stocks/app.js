@@ -9,7 +9,21 @@ const knex = require("knex")(options);
 const helmet = require("helmet");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
+const { ConsoleSpanExporter } = require('@opentelemetry/sdk-trace-node');
+const { start } = require('@splunk/otel');
+start({
+  serviceName: process.env.serviceName,
+  endpoint: 'http://localhost:4317',
+  metrics: { runtimeMetricsEnabled: true },
+  profiling: { memoryProfilingEnabled: true },
+  // tracing: {
+  //   spanExporterFactory: (options) => {
 
+  //     return new ConsoleSpanExporter({ serviceName: options.serviceName })
+  //   }
+  // }
+})
+//console.log(process.env.serviceName)
 const stocksRouter = require("./routes/stocks");
 
 
